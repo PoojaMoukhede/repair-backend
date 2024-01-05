@@ -1,0 +1,258 @@
+const express = require("express");
+const router = express.Router();
+const mysqlConnection = require("../Connection");
+
+// Add a Order
+router.post("/orders", (req, res) => {
+  const data =
+    {
+      orderID: req.body.orderID,
+      CustomeID: req.body.CustomeID,
+      productName: req.body.productName,
+      serialNumber: req.body.serialNumber,
+      HSN: req.body.HSN,
+      includeHsn:req.body.includeHsn,
+      rate:req.body.rate,
+      tax:req.body.tax,
+      total:req.body.total,
+      customerReason: req.body.customerReason,
+      orderRemark: req.body.orderRemark,
+      orderDate: req.body.orderDate,
+      orderNumber: req.body.orderNumber,
+      CustomerReferance:req.body.CustomerReferance,
+      RefrenceDate:req.body.RefrenceDate,
+      CustomerName:req.body.CustomerName
+      // isInProcess: req.body.isInProcess,
+      // isReady: req.body.isReady,
+      // isBilled: req.body.isBilled,
+      // isScraped: req.body.isScraped,
+    }
+
+console.log(data)
+  let sql = `INSERT INTO orders SET ?`;
+  mysqlConnection.query(sql, data, (err, result) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    return res.status(201).json({ msg: "Order added successfully" ,massage:data});
+  });
+});
+// router.post("/orders", (req, res) => {
+//   const orders = req.body.map((order) => ({
+
+//     CustomeID: req.body.CustomeID,
+//     productName: req.body.productName,
+//     serialNumber: req.body.serialNumber,
+//     HSN: req.body.HSN,
+//     includeHsn: req.body.includeHsn,
+//     rate: req.body.rate,
+//     tax: req.body.tax,
+//     total: req.body.total,
+//     customerReason: req.body.customerReason,
+//     orderRemark: req.body.orderRemark,
+//     orderDate: req.body.orderDate,
+//     orderNumber: req.body.orderNumber,
+//     CustomerReferance: req.body.CustomerReferance,
+//     RefrenceDate: req.body.RefrenceDate,
+//     CustomerName: req.body.CustomerName,
+
+//   }));
+
+//   let sql =
+//     "INSERT INTO orders (CustomeID, productName, serialNumber, HSN, includeHsn, rate, tax, total, customerReason, orderRemark, orderDate, orderNumber, CustomerReferance, RefrenceDate, CustomerName) VALUES ?";
+//   mysqlConnection.query(
+//     sql,
+//     [orders.map((order) => Object.values(order))],
+//     (err, result) => {
+//       if (err) {
+//         console.log(err);
+//         return res.status(500).json({ error: "Internal Server Error" });
+//       }
+//       return res
+//         .status(201)
+//         .json({ msg: "Orders added successfully", message: orders });
+//     }
+//   );
+// });
+
+// Delete a Order
+router.delete("/orders/:id", (req, res) => {
+  const CustomeID = req.params.id;
+
+  let sql = `DELETE FROM orders WHERE CustomeID = ?`;
+  mysqlConnection.query(sql, CustomeID, (err, result) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    return res.status(200).json({ msg: "Order deleted successfully" });
+  });
+});
+
+// Get all Order
+router.get("/orders", (req, res) => {
+  let sql = "SELECT * FROM orders";
+  mysqlConnection.query(sql, (err, results) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    return res.status(200).json(results);
+  });
+});
+
+// Get a specific Order
+router.get("/orders/:id", (req, res) => {
+  const CustomeID = req.params.id;
+
+  let sql = "SELECT * FROM orders WHERE CustomeID = ?";
+  mysqlConnection.query(sql, CustomeID, (err, results) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    return res.status(200).json(results[0]);
+  });
+});
+
+//  merged order and customer details
+router.get("/orders/:orderID/details", (req, res) => {
+  const orderID = req.params.orderID;
+  const sql = `
+    SELECT o.*, c.*
+    FROM orders o
+    JOIN customers c ON o.CustomeID = c.CustomeID
+    WHERE o.orderID = ?`;
+
+  mysqlConnection.query(sql, [orderID], (err, result) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    const mergedData = result[0];
+    return res.status(200).json(mergedData);
+  });
+});
+
+//------------------- state change and get data 
+
+router.put('/orders/:orderId/:orderState', (req, res) => {
+  const { orderId, orderState } = req.params;
+
+  // Validate the status to prevent SQL injection
+  const validStatus = ['isinprocess', 'isready', 'isbilled', 'isscraped'];
+  if (!validStatus.includes(orderState)) {
+    res.status(400).json({ error: 'Invalid status' });
+    return;
+  }
+
+  // Construct the query dynamically
+  const updateQuery = `
+    UPDATE orders
+    SET ${validStatus.map(status => `${status} = ${status === orderState ? true : false}`).join(', ')}, orderState = ?
+    WHERE orderID = ?;
+  `;
+
+  mysqlConnection.query(updateQuery, [orderState, orderId], (err, results) => {
+    if (err) {
+      console.error('Error executing MySQL query:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+      return;
+    }
+
+    if (results.affectedRows === 0) {
+      res.status(404).json({ error: 'Order not found' });
+      return;
+    }
+
+    res.json({ success: true });
+  });
+});
+
+router.get('/isinprocess-orders', (req, res) => {
+  mysqlConnection.query('SELECT * FROM orders WHERE orderState = "isinprocess"', (err, results) => {
+    if (err) {
+      console.error('Error executing MySQL query:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+      return;
+    }
+    res.json(results);
+  });
+});
+
+// API endpoint to get ready orders
+router.get('/isready-orders', (req, res) => {
+  mysqlConnection.query('SELECT * FROM orders WHERE orderState = "isready"', (err, results) => {
+    if (err) {
+      console.error('Error executing MySQL query:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+      return;
+    }
+    res.json(results);
+  });
+});
+
+// API endpoint to get billed orders
+router.get('/isbilled-orders', (req, res) => {
+  mysqlConnection.query('SELECT * FROM orders WHERE orderState = "isbilled"', (err, results) => {
+    if (err) {
+      console.error('Error executing MySQL query:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+      return;
+    }
+    res.json(results);
+  });
+});
+
+// not in use
+router.get("/order-item-list-with-customer", (req, res) => {
+  const sql = `
+    SELECT orders.*, customers.*
+    FROM orders
+    LEFT JOIN customers ON orders.CustomeID = customers.CustomeID
+    WHERE orders.orderState = 'order_item_list' AND 
+          orders.isInProcess = true AND 
+          orders.isReady = false AND 
+          orders.isBilled = false AND 
+          orders.isScraped = false
+  `;
+
+  mysqlConnection.query(sql, (err, result) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+
+    return res.status(200).json(result);
+  });
+});
+
+//----------------------  
+
+module.exports = router;
+
+// Update a Order
+// router.put("/orders/:id", (req, res) => {
+//   const CustomeID = req.params.id;
+//   const newData = {
+//     CustomeName: req.body.CustomeName,
+//     CustomeEmail: req.body.CustomeEmail,
+//     CustomeContactNo: req.body.CustomeContactNo,
+//     CustomerAddress: req.body.CustomerAddress,
+//     CustomerPinCode: req.body.CustomerPinCode,
+//     CustomerCountry: req.body.CustomerCountry,
+//     CustomerState: req.body.CustomerState,
+//     CustomerCity: req.body.CustomerCity,
+//     CustomerGST: req.body.CustomerGST,
+//   };
+
+//   let sql = `UPDATE orders SET ? WHERE CustomeID = ?`;
+//   mysqlConnection.query(sql, [newData, CustomeID], (err, result) => {
+//     if (err) {
+//       console.log(err);
+//       return res.status(500).json({ error: "Internal Server Error" });
+//     }
+//     return res.status(200).json({ msg: "Order updated successfully" });
+//   });
+// });
