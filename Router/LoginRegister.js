@@ -68,15 +68,14 @@ router.post("/login", (req, res) => {
       res.status(500).json({ error: "Internal Server Error" });
       return;
     }
-
     if (result.length === 0) {
       res.status(401).json({ msg: "Admin email Not Exists" });
     } else {
       bcrypt.compare(password, result[0].password, (err, response) => {
         if (response) {
-          const user = { email: result[0].email, id: result[0].id };
+          const user = { email: result[0].adminEmail};
           const token = jwt.sign(user, secretKey, { expiresIn: "1h" });
-          res.status(200).json({ login: true, token });
+          res.status(200).json({ login: true, token, user });
         } else {
           res.status(401).json({ login: false, msg: "Wrong password" });
         }
@@ -105,5 +104,18 @@ function verifyToken(req, res, next) {
     next();
   });
 }
+
+router.get("/admin/:id", (req, res) => {
+  const adminID = req.params.id;
+
+  let sql = "SELECT * FROM admins WHERE adminID = ?";
+  mysqlConnection.query(sql, adminID, (err, results) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    return res.status(200).json(results[0]);
+  });
+});
 
 module.exports = router;

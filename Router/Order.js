@@ -205,6 +205,18 @@ router.get('/isbilled-orders', (req, res) => {
   });
 });
 
+// API endpoint to get billed orders
+router.get('/isscraped-orders', (req, res) => {
+  mysqlConnection.query('SELECT * FROM orders WHERE orderState = "isscraped"', (err, results) => {
+    if (err) {
+      console.error('Error executing MySQL query:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+      return;
+    }
+    res.json(results);
+  });
+});
+
 // not in use
 router.get("/order-item-list-with-customer", (req, res) => {
   const sql = `
