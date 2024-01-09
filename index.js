@@ -7,6 +7,7 @@ const login = require('./Router/LoginRegister')
 const customer = require('./Router/AddCustumber')
 const orders = require('./Router/Order')
 const companyDetail = require('./Router/CompanyDetail')
+const invoice = require('./Router/Invoice')
 
 app.use(cors());
 app.use(express.json());
@@ -16,6 +17,7 @@ app.use('/',login)
 app.use('/',customer)
 app.use('/',orders)
 app.use('/',companyDetail)
+app.use('/',invoice)
 
 
 app.listen(8000,()=>{

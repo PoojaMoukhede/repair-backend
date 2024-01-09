@@ -3,22 +3,42 @@ const router = express.Router();
 const mysqlConnection = require("../Connection");
 
 // Add a Order
-router.post("/orders", (req, res) => {
-  const data =
+router.post("/orders", async(req, res) => {
+  const {
+      orderID,
+      CustomeID,
+      productName,
+      serialNumber,
+      HSN,
+      includeHsn,
+      rate,
+      tax,
+      total,
+      customerReason,
+      orderRemark,
+      orderDate,
+      orderNumber,
+      CustomerReferance,
+      RefrenceDate,
+      CustomerName
+    } = req.body
+    const lastOrderNumber = await getLastOrderNumber();
+    const nextOrderNumber = generateNextOrderNumber(lastOrderNumber);
+    const data=
     {
-      orderID: req.body.orderID,
-      CustomeID: req.body.CustomeID,
-      productName: req.body.productName,
-      serialNumber: req.body.serialNumber,
-      HSN: req.body.HSN,
+      orderID:req.body.orderID ,
+      CustomeID:req.body.CustomeID,
+      productName:req.body.productName,
+      serialNumber:req.body.serialNumber,
+      HSN:req.body.HSN,
       includeHsn:req.body.includeHsn,
       rate:req.body.rate,
       tax:req.body.tax,
       total:req.body.total,
-      customerReason: req.body.customerReason,
-      orderRemark: req.body.orderRemark,
-      orderDate: req.body.orderDate,
-      orderNumber: req.body.orderNumber,
+      customerReason:req.body.customerReason,
+      orderRemark:req.body.orderRemark,
+      orderDate:req.body.orderDate,
+      orderNumber:nextOrderNumber,
       CustomerReferance:req.body.CustomerReferance,
       RefrenceDate:req.body.RefrenceDate,
       CustomerName:req.body.CustomerName
@@ -26,8 +46,7 @@ router.post("/orders", (req, res) => {
       // isReady: req.body.isReady,
       // isBilled: req.body.isBilled,
       // isScraped: req.body.isScraped,
-    }
-
+    } 
 console.log(data)
   let sql = `INSERT INTO orders SET ?`;
   mysqlConnection.query(sql, data, (err, result) => {
@@ -217,32 +236,55 @@ router.get('/isscraped-orders', (req, res) => {
   });
 });
 
-// not in use
-router.get("/order-item-list-with-customer", (req, res) => {
-  const sql = `
-    SELECT orders.*, customers.*
-    FROM orders
-    LEFT JOIN customers ON orders.CustomeID = customers.CustomeID
-    WHERE orders.orderState = 'order_item_list' AND 
-          orders.isInProcess = true AND 
-          orders.isReady = false AND 
-          orders.isBilled = false AND 
-          orders.isScraped = false
-  `;
-
-  mysqlConnection.query(sql, (err, result) => {
-    if (err) {
-      console.log(err);
-      return res.status(500).json({ error: "Internal Server Error" });
-    }
-
-    return res.status(200).json(result);
+function getLastOrderNumber() {
+  return new Promise((resolve, reject) => {
+    let sql =
+      "SELECT MAX(CAST(SUBSTRING(orderNumber, LOCATE('/', orderNumber) + 1) AS UNSIGNED)) AS maxNumber FROM orders";
+    mysqlConnection.query(sql, (err, result) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(result[0].maxNumber || 0);
+      }
+    });
   });
-});
+}
 
+function generateNextOrderNumber(lastInvoiceNumber) {
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().toLocaleString('en-US', { month: 'short' });
+  const nextNumber = lastInvoiceNumber + 1;
+  const formattedNumber = nextNumber.toString().padStart(5, "0");
+  return `RPR/${(currentYear).toString().substring(2)}/${currentMonth}/${formattedNumber}`;
+}
+
+// console.log(generateNextOrderNumber(10));
 //----------------------  
 
 module.exports = router;
+
+// not in use
+// router.get("/order-item-list-with-customer", (req, res) => {
+//   const sql = `
+//     SELECT orders.*, customers.*
+//     FROM orders
+//     LEFT JOIN customers ON orders.CustomeID = customers.CustomeID
+//     WHERE orders.orderState = 'order_item_list' AND 
+//           orders.isInProcess = true AND 
+//           orders.isReady = false AND 
+//           orders.isBilled = false AND 
+//           orders.isScraped = false
+//   `;
+
+//   mysqlConnection.query(sql, (err, result) => {
+//     if (err) {
+//       console.log(err);
+//       return res.status(500).json({ error: "Internal Server Error" });
+//     }
+
+//     return res.status(200).json(result);
+//   });
+// });
 
 // Update a Order
 // router.put("/orders/:id", (req, res) => {
