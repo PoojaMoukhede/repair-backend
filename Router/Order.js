@@ -47,7 +47,7 @@ router.post("/orders", async(req, res) => {
       // isBilled: req.body.isBilled,
       // isScraped: req.body.isScraped,
     } 
-console.log(data)
+    console.log(data)
   let sql = `INSERT INTO orders SET ?`;
   mysqlConnection.query(sql, data, (err, result) => {
     if (err) {
@@ -166,7 +166,6 @@ router.put('/orders/:orderId/:orderState', (req, res) => {
     return;
   }
 
-  // Construct the query dynamically
   const updateQuery = `
     UPDATE orders
     SET ${validStatus.map(status => `${status} = ${status === orderState ? true : false}`).join(', ')}, orderState = ?
@@ -188,6 +187,7 @@ router.put('/orders/:orderId/:orderState', (req, res) => {
     res.json({ success: true });
   });
 });
+
 
 router.get('/isinprocess-orders', (req, res) => {
   mysqlConnection.query('SELECT * FROM orders WHERE orderState = "isinprocess"', (err, results) => {
@@ -252,12 +252,29 @@ function getLastOrderNumber() {
 
 function generateNextOrderNumber(lastInvoiceNumber) {
   const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().toLocaleString('en-US', { month: 'short' });
+  const currentMonth = new Date().toLocaleString('en-US', { month: 'short' }); //.toUpperCase() -- Jan
   const nextNumber = lastInvoiceNumber + 1;
   const formattedNumber = nextNumber.toString().padStart(5, "0");
   return `RPR/${(currentYear).toString().substring(2)}/${currentMonth}/${formattedNumber}`;
 }
 
+router.delete("/orders/:id", (req, res) => {
+  const orderID = req.params.id;
+
+  let sql = "DELETE FROM orders WHERE orderID = ?";
+  mysqlConnection.query(sql, orderID, (err, results) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+
+    if (results.affectedRows === 0) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    return res.status(204).send(results);
+  });
+});
 // console.log(generateNextOrderNumber(10));
 //----------------------  
 

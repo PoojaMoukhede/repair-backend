@@ -14,7 +14,7 @@ router.post("/invoice", async (req, res) => {
       invoiceDate,
       transportationMode,
       subTotal,
-      ff, 
+      ff,
       hsn,
     } = req.body;
 
@@ -112,102 +112,126 @@ router.get("/invoice/:id", (req, res) => {
   });
 });
 
+router.get("/invoiceData/:orderID", (req, res) => {
+  const orderID = req.params.orderID;
+  const sql = `
+  SELECT i.*, o.*, c.*
+  FROM invoices i
+  JOIN orders o ON i.orderID = o.orderID
+  JOIN customers c ON o.CustomeID = c.CustomeID
+  WHERE o.orderID = ? AND (o.isInProcess = true OR o.isReady = true OR o.isBilled = true OR o.isScraped = true)
+   `;
 
-//API for total amount ==== number to words
-router.get("/number-to-word", (req, res) => {
-  const totalAmount = parseFloat(req.query.totalAmount || 0);
-  const amountInWords = convertNumberToWords(totalAmount);
-  res.json({ amountInWords });
+  mysqlConnection.query(sql, [orderID], (err, result) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: "Invoice not found" });
+    }
+
+    const mergedInvoiceData = result[0];
+    console.log(mergedInvoiceData);
+    return res.status(200).json(mergedInvoiceData);
+  });
 });
-// function for total amount ==== number to words
-function convertNumberToWords(number) {
-  const units = [
-    "",
-    "One",
-    "Two",
-    "Three",
-    "Four",
-    "Five",
-    "Six",
-    "Seven",
-    "Eight",
-    "Nine",
-  ];
-  const teens = [
-    // "",
-    "Eleven",
-    "Twelve",
-    "Thirteen",
-    "Fourteen",
-    "Fifteen",
-    "Sixteen",
-    "Seventeen",
-    "Eighteen",
-    "Nineteen",
-  ];
-  const tens = [
-    // "",
-    "Ten",
-    "Twenty",
-    "Thirty",
-    "Forty",
-    "Fifty",
-    "Sixty",
-    "Seventy",
-    "Eighty",
-    "Ninety",
-  ];
-
-  const convertChunkToWords = (num) => {
-    const result = [];
-    if (num >= 100) {
-      result.push(units[Math.floor(num / 100)] + " Hundred");
-      num %= 100;
-    }
-    
-
-    if (num >= 11 && num <= 19) {
-      result.push(teens[num - 11]);
-    } else if (num >= 20) {
-      result.push(tens[Math.floor(num / 10)]);
-      num %= 10;
-    }
-
-    if (num > 0) {
-      result.push(units[num]);
-    }
-
-    return result.join(" ");
-  };
-
-  const chunks = [];
-  let remaining = Math.floor(number);
-
-  while (remaining > 0) {
-    chunks.push(remaining % 1000);
-    remaining = Math.floor(remaining / 1000);
-  }
-
-  if (chunks.length === 0) {
-    return "Zero Rupees";
-  }
-
-  const words = chunks
-    .map((chunk, index) => {
-      if (chunk === 0) {
-        return "";
-      }
-    //   console.log(index);
-      const chunkInWords = convertChunkToWords(chunk);
-      return (
-        chunkInWords +
-        (index === 0 ? "" : ` ${index === 1 ? "Thousand" : "Lakh"}`)
-      );
-    })
-    .reverse()
-    .join(" ");
-
-  return `${words} Rupees`;
-}
 
 module.exports = router;
+
+//API for total amount ==== number to words
+// router.get("/number-to-word", (req, res) => {
+//   const totalAmount = parseFloat(req.query.totalAmount || 0);
+//   const amountInWords = convertNumberToWords(totalAmount);
+//   res.json({ amountInWords });
+// });
+// // function for total amount ==== number to words
+// function convertNumberToWords(number) {
+//   const units = [
+//     "",
+//     "One",
+//     "Two",
+//     "Three",
+//     "Four",
+//     "Five",
+//     "Six",
+//     "Seven",
+//     "Eight",
+//     "Nine",
+//   ];
+//   const teens = [
+//     // "",
+//     "Eleven",
+//     "Twelve",
+//     "Thirteen",
+//     "Fourteen",
+//     "Fifteen",
+//     "Sixteen",
+//     "Seventeen",
+//     "Eighteen",
+//     "Nineteen",
+//   ];
+//   const tens = [
+//     // "",
+//     "Ten",
+//     "Twenty",
+//     "Thirty",
+//     "Forty",
+//     "Fifty",
+//     "Sixty",
+//     "Seventy",
+//     "Eighty",
+//     "Ninety",
+//   ];
+
+//   const convertChunkToWords = (num) => {
+//     const result = [];
+//     if (num >= 100) {
+//       result.push(units[Math.floor(num / 100)] + " Hundred");
+//       num %= 100;
+//     }
+
+//     if (num >= 11 && num <= 19) {
+//       result.push(teens[num - 11]);
+//     } else if (num >= 20) {
+//       result.push(tens[Math.floor(num / 10)]);
+//       num %= 10;
+//     }
+
+//     if (num > 0) {
+//       result.push(units[num]);
+//     }
+
+//     return result.join(" ");
+//   };
+
+//   const chunks = [];
+//   let remaining = Math.floor(number);
+
+//   while (remaining > 0) {
+//     chunks.push(remaining % 1000);
+//     remaining = Math.floor(remaining / 1000);
+//   }
+
+//   if (chunks.length === 0) {
+//     return "Zero Rupees";
+//   }
+
+//   const words = chunks
+//     .map((chunk, index) => {
+//       if (chunk === 0) {
+//         return "";
+//       }
+//       //   console.log(index);
+//       const chunkInWords = convertChunkToWords(chunk);
+//       return (
+//         chunkInWords +
+//         (index === 0 ? "" : ` ${index === 1 ? "Thousand" : "Lakh"}`)
+//       );
+//     })
+//     .reverse()
+//     .join(" ");
+
+//   return `${words} Rupees`;
+// }
