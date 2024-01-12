@@ -2,7 +2,8 @@ const express = require("express");
 const router = express.Router();
 const mysqlConnection = require("../Connection");
 
-// Add a Order
+
+// Add one Order 
 router.post("/orders", async(req, res) => {
   const {
       orderID,
@@ -11,9 +12,9 @@ router.post("/orders", async(req, res) => {
       serialNumber,
       HSN,
       includeHsn,
-      rate,
-      tax,
-      total,
+      // rate,
+      // tax,
+      // total,
       customerReason,
       orderRemark,
       orderDate,
@@ -32,9 +33,9 @@ router.post("/orders", async(req, res) => {
       serialNumber:req.body.serialNumber,
       HSN:req.body.HSN,
       includeHsn:req.body.includeHsn,
-      rate:req.body.rate,
-      tax:req.body.tax,
-      total:req.body.total,
+      // rate:req.body.rate,
+      // tax:req.body.tax,
+      // total:req.body.total,
       customerReason:req.body.customerReason,
       orderRemark:req.body.orderRemark,
       orderDate:req.body.orderDate,
@@ -57,6 +58,58 @@ router.post("/orders", async(req, res) => {
     return res.status(201).json({ msg: "Order added successfully" ,massage:data});
   });
 });
+
+
+// Add one or more order
+// router.post("/orders", async (req, res) => {
+//   try {
+//     const orders = Array.isArray(req.body) ? req.body : [req.body];
+
+//     const lastOrderNumber = await getLastOrderNumber();
+
+//     for (const order of orders) {
+//       const nextOrderNumber = generateNextOrderNumber(lastOrderNumber);
+//       const data = {
+//         orderID: order.orderID,
+//         CustomeID: order.CustomeID,
+//         productName: order.productName,
+//         serialNumber: order.serialNumber,
+//         HSN: order.HSN,
+//         includeHsn: order.includeHsn,
+//         // rate: order.rate,
+//         // tax: order.tax,
+//         // total: order.total,
+//         customerReason: order.customerReason,
+//         orderRemark: order.orderRemark,
+//         orderDate: order.orderDate,
+//         orderNumber: nextOrderNumber,
+//         CustomerReferance: order.CustomerReferance,
+//         RefrenceDate: order.RefrenceDate,
+//         CustomerName: order.CustomerName,
+//       };
+
+//       console.log(data);
+
+//       let sql = `INSERT INTO orders SET ?`;
+
+//       await new Promise((resolve, reject) => {
+//         mysqlConnection.query(sql, data, (err, result) => {
+//           if (err) {
+//             console.log(err);
+//             return reject(err);
+//           }
+//           resolve();
+//         });
+//       });
+//     }
+
+//     return res.status(201).json({ msg: "Orders added successfully", orders });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
+
 // router.post("/orders", (req, res) => {
 //   const orders = req.body.map((order) => ({
 
@@ -188,7 +241,6 @@ router.put('/orders/:orderId/:orderState', (req, res) => {
   });
 });
 
-
 router.get('/isinprocess-orders', (req, res) => {
   mysqlConnection.query('SELECT * FROM orders WHERE orderState = "isinprocess"', (err, results) => {
     if (err) {
@@ -303,6 +355,8 @@ module.exports = router;
 //   });
 // });
 
+
+
 // Update a Order
 // router.put("/orders/:id", (req, res) => {
 //   const CustomeID = req.params.id;
@@ -325,5 +379,62 @@ module.exports = router;
 //       return res.status(500).json({ error: "Internal Server Error" });
 //     }
 //     return res.status(200).json({ msg: "Order updated successfully" });
+//   });
+// });
+
+
+// Add one Order 
+// router.post("/orders", async(req, res) => {
+//   const {
+//       orderID,
+//       CustomeID,
+//       productName,
+//       serialNumber,
+//       HSN,
+//       includeHsn,
+//       rate,
+//       tax,
+//       total,
+//       customerReason,
+//       orderRemark,
+//       orderDate,
+//       orderNumber,
+//       CustomerReferance,
+//       RefrenceDate,
+//       CustomerName
+//     } = req.body
+//     const lastOrderNumber = await getLastOrderNumber();
+//     const nextOrderNumber = generateNextOrderNumber(lastOrderNumber);
+//     const data=
+//     {
+//       orderID:req.body.orderID ,
+//       CustomeID:req.body.CustomeID,
+//       productName:req.body.productName,
+//       serialNumber:req.body.serialNumber,
+//       HSN:req.body.HSN,
+//       includeHsn:req.body.includeHsn,
+//       rate:req.body.rate,
+//       tax:req.body.tax,
+//       total:req.body.total,
+//       customerReason:req.body.customerReason,
+//       orderRemark:req.body.orderRemark,
+//       orderDate:req.body.orderDate,
+//       orderNumber:nextOrderNumber,
+//       CustomerReferance:req.body.CustomerReferance,
+//       RefrenceDate:req.body.RefrenceDate,
+//       CustomerName:req.body.CustomerName
+//       // isInProcess: req.body.isInProcess,
+//       // isReady: req.body.isReady,
+//       // isBilled: req.body.isBilled,
+//       // isScraped: req.body.isScraped,
+//     } 
+//     console.log(data)
+//   let sql = `INSERT INTO orders SET ?`;
+//   mysqlConnection.query(sql, data, (err, result) => {
+//     if (err) {
+//       console.log(err);
+//       return res.status(500).json({ error: "Internal Server Error" });
+//     }
+//     return res.status(201).json({ msg: "Order added successfully" ,massage:data});
 //   });
 // });
