@@ -14,20 +14,34 @@ router.post("/invoice", async (req, res) => {
       invoiceDate,
       transportationMode,
       subTotal,
+      isInWarranty,
       ff,
       hsn,
     } = req.body;
 
-    // Calculate GST
-    // const igst = 0.18 * subTotal; // Assuming 18% IGST / 100
-    const cgst = 0.09 * subTotal; // Assuming 9% CGST / 100
-    const sgst = 0.09 * subTotal; // Assuming 9% SGST / 100
+    const gstRate = 0.18; 
 
-    // const totalAmount = subTotal + igst + cgst + sgst + ff;
-    const totalAmount = subTotal + cgst + sgst;
+    // Calculate GST
+    let cgst = 0;
+    let sgst = 0;
+    let igst = 0;
+
+    if (!isInWarranty) {
+      cgst = (gstRate / 2) * subTotal;
+      sgst = (gstRate / 2) * subTotal;
+      igst = 0; // Assuming 0 IGST for intrastate transactions
+    } else {
+      cgst = 0;
+      sgst = 0;
+      igst = 0;
+    }
+
+    const totalAmount = isInWarranty ? 0 : subTotal + cgst + sgst + ff;
 
     const lastInvoiceNumber = await getLastInvoiceNumber();
     const nextInvoiceNumber = generateNextInvoiceNumber(lastInvoiceNumber);
+    console.log(lastInvoiceNumber);
+    console.log(nextInvoiceNumber);
 
     const data = {
       orderID,
@@ -40,9 +54,10 @@ router.post("/invoice", async (req, res) => {
       invoiceDate,
       transportationMode,
       subTotal,
-      // igst: igst,
-      cgst: cgst,
-      sgst: sgst,
+      isInWarranty,
+      cgst,
+      sgst,
+      igst,
       ff,
       hsn,
       totalAmount: totalAmount,
@@ -64,6 +79,31 @@ router.post("/invoice", async (req, res) => {
   }
 });
 
+
+// function getLastInvoiceNumber() {
+//   return new Promise((resolve, reject) => {
+//     let sql =
+//       "SELECT MAX(CAST(SUBSTRING(invoice_number, LOCATE('/', invoice_number) + 1) AS UNSIGNED)) AS maxNumber FROM invoices";
+//     mysqlConnection.query(sql, (err, result) => {
+//       if (err) {
+//         reject(err);
+//       } else {
+//         resolve(result[0].maxNumber || 0);
+//       }
+//     });
+//   });
+// }
+
+// function generateNextInvoiceNumber(lastInvoiceNumber) {
+//   const currentYear = new Date().getFullYear();
+//   const nextNumber = lastInvoiceNumber + 1;
+//   const formattedNumber = nextNumber.toString().padStart(5, "0");
+//   return `MCIPL/RPR/${currentYear.toString().substring(2)}${(currentYear + 1)
+//     .toString()
+//     .substring(2)}/${formattedNumber}`;
+// }
+
+// console.log(generateNextInvoiceNumber(10));
 function getLastInvoiceNumber() {
   return new Promise((resolve, reject) => {
     let sql =
@@ -72,7 +112,8 @@ function getLastInvoiceNumber() {
       if (err) {
         reject(err);
       } else {
-        resolve(result[0].maxNumber || 0);
+        const maxNumber = result[0].maxNumber;
+        resolve(maxNumber === null ? 0 : maxNumber);
       }
     });
   });
@@ -86,7 +127,6 @@ function generateNextInvoiceNumber(lastInvoiceNumber) {
     .toString()
     .substring(2)}/${formattedNumber}`;
 }
-// console.log(generateNextInvoiceNumber(10));
 
 router.get("/invoice", (req, res) => {
   let sql = "SELECT * FROM invoices";
@@ -139,99 +179,3 @@ router.get("/invoiceData/:orderID", (req, res) => {
 });
 
 module.exports = router;
-
-//API for total amount ==== number to words
-// router.get("/number-to-word", (req, res) => {
-//   const totalAmount = parseFloat(req.query.totalAmount || 0);
-//   const amountInWords = convertNumberToWords(totalAmount);
-//   res.json({ amountInWords });
-// });
-// // function for total amount ==== number to words
-// function convertNumberToWords(number) {
-//   const units = [
-//     "",
-//     "One",
-//     "Two",
-//     "Three",
-//     "Four",
-//     "Five",
-//     "Six",
-//     "Seven",
-//     "Eight",
-//     "Nine",
-//   ];
-//   const teens = [
-//     // "",
-//     "Eleven",
-//     "Twelve",
-//     "Thirteen",
-//     "Fourteen",
-//     "Fifteen",
-//     "Sixteen",
-//     "Seventeen",
-//     "Eighteen",
-//     "Nineteen",
-//   ];
-//   const tens = [
-//     // "",
-//     "Ten",
-//     "Twenty",
-//     "Thirty",
-//     "Forty",
-//     "Fifty",
-//     "Sixty",
-//     "Seventy",
-//     "Eighty",
-//     "Ninety",
-//   ];
-
-//   const convertChunkToWords = (num) => {
-//     const result = [];
-//     if (num >= 100) {
-//       result.push(units[Math.floor(num / 100)] + " Hundred");
-//       num %= 100;
-//     }
-
-//     if (num >= 11 && num <= 19) {
-//       result.push(teens[num - 11]);
-//     } else if (num >= 20) {
-//       result.push(tens[Math.floor(num / 10)]);
-//       num %= 10;
-//     }
-
-//     if (num > 0) {
-//       result.push(units[num]);
-//     }
-
-//     return result.join(" ");
-//   };
-
-//   const chunks = [];
-//   let remaining = Math.floor(number);
-
-//   while (remaining > 0) {
-//     chunks.push(remaining % 1000);
-//     remaining = Math.floor(remaining / 1000);
-//   }
-
-//   if (chunks.length === 0) {
-//     return "Zero Rupees";
-//   }
-
-//   const words = chunks
-//     .map((chunk, index) => {
-//       if (chunk === 0) {
-//         return "";
-//       }
-//       //   console.log(index);
-//       const chunkInWords = convertChunkToWords(chunk);
-//       return (
-//         chunkInWords +
-//         (index === 0 ? "" : ` ${index === 1 ? "Thousand" : "Lakh"}`)
-//       );
-//     })
-//     .reverse()
-//     .join(" ");
-
-//   return `${words} Rupees`;
-// }

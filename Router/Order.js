@@ -21,10 +21,12 @@ router.post("/orders", async(req, res) => {
       orderNumber,
       CustomerReferance,
       RefrenceDate,
-      CustomerName
+      CustomeName
     } = req.body
     const lastOrderNumber = await getLastOrderNumber();
     const nextOrderNumber = generateNextOrderNumber(lastOrderNumber);
+    console.log(lastOrderNumber);
+    console.log(nextOrderNumber);
     const data=
     {
       orderID:req.body.orderID ,
@@ -42,7 +44,7 @@ router.post("/orders", async(req, res) => {
       orderNumber:nextOrderNumber,
       CustomerReferance:req.body.CustomerReferance,
       RefrenceDate:req.body.RefrenceDate,
-      CustomerName:req.body.CustomerName
+      CustomeName:req.body.CustomeName
       // isInProcess: req.body.isInProcess,
       // isReady: req.body.isReady,
       // isBilled: req.body.isBilled,
@@ -58,95 +60,6 @@ router.post("/orders", async(req, res) => {
     return res.status(201).json({ msg: "Order added successfully" ,massage:data});
   });
 });
-
-
-// Add one or more order
-// router.post("/orders", async (req, res) => {
-//   try {
-//     const orders = Array.isArray(req.body) ? req.body : [req.body];
-
-//     const lastOrderNumber = await getLastOrderNumber();
-
-//     for (const order of orders) {
-//       const nextOrderNumber = generateNextOrderNumber(lastOrderNumber);
-//       const data = {
-//         orderID: order.orderID,
-//         CustomeID: order.CustomeID,
-//         productName: order.productName,
-//         serialNumber: order.serialNumber,
-//         HSN: order.HSN,
-//         includeHsn: order.includeHsn,
-//         // rate: order.rate,
-//         // tax: order.tax,
-//         // total: order.total,
-//         customerReason: order.customerReason,
-//         orderRemark: order.orderRemark,
-//         orderDate: order.orderDate,
-//         orderNumber: nextOrderNumber,
-//         CustomerReferance: order.CustomerReferance,
-//         RefrenceDate: order.RefrenceDate,
-//         CustomerName: order.CustomerName,
-//       };
-
-//       console.log(data);
-
-//       let sql = `INSERT INTO orders SET ?`;
-
-//       await new Promise((resolve, reject) => {
-//         mysqlConnection.query(sql, data, (err, result) => {
-//           if (err) {
-//             console.log(err);
-//             return reject(err);
-//           }
-//           resolve();
-//         });
-//       });
-//     }
-
-//     return res.status(201).json({ msg: "Orders added successfully", orders });
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
-
-// router.post("/orders", (req, res) => {
-//   const orders = req.body.map((order) => ({
-
-//     CustomeID: req.body.CustomeID,
-//     productName: req.body.productName,
-//     serialNumber: req.body.serialNumber,
-//     HSN: req.body.HSN,
-//     includeHsn: req.body.includeHsn,
-//     rate: req.body.rate,
-//     tax: req.body.tax,
-//     total: req.body.total,
-//     customerReason: req.body.customerReason,
-//     orderRemark: req.body.orderRemark,
-//     orderDate: req.body.orderDate,
-//     orderNumber: req.body.orderNumber,
-//     CustomerReferance: req.body.CustomerReferance,
-//     RefrenceDate: req.body.RefrenceDate,
-//     CustomerName: req.body.CustomerName,
-
-//   }));
-
-//   let sql =
-//     "INSERT INTO orders (CustomeID, productName, serialNumber, HSN, includeHsn, rate, tax, total, customerReason, orderRemark, orderDate, orderNumber, CustomerReferance, RefrenceDate, CustomerName) VALUES ?";
-//   mysqlConnection.query(
-//     sql,
-//     [orders.map((order) => Object.values(order))],
-//     (err, result) => {
-//       if (err) {
-//         console.log(err);
-//         return res.status(500).json({ error: "Internal Server Error" });
-//       }
-//       return res
-//         .status(201)
-//         .json({ msg: "Orders added successfully", message: orders });
-//     }
-//   );
-// });
 
 // Delete a Order
 router.delete("/orders/:id", (req, res) => {
@@ -296,7 +209,8 @@ function getLastOrderNumber() {
       if (err) {
         reject(err);
       } else {
-        resolve(result[0].maxNumber || 0);
+        const maxNumber = result[0].maxNumber;
+        resolve(maxNumber === null ? 0 : maxNumber);
       }
     });
   });
@@ -438,3 +352,94 @@ module.exports = router;
 //     return res.status(201).json({ msg: "Order added successfully" ,massage:data});
 //   });
 // });
+
+
+
+// Add one or more order
+// router.post("/orders", async (req, res) => {
+//   try {
+//     const orders = Array.isArray(req.body) ? req.body : [req.body];
+
+//     const lastOrderNumber = await getLastOrderNumber();
+
+//     for (const order of orders) {
+//       const nextOrderNumber = generateNextOrderNumber(lastOrderNumber);
+//       const data = {
+//         orderID: order.orderID,
+//         CustomeID: order.CustomeID,
+//         productName: order.productName,
+//         serialNumber: order.serialNumber,
+//         HSN: order.HSN,
+//         includeHsn: order.includeHsn,
+//         // rate: order.rate,
+//         // tax: order.tax,
+//         // total: order.total,
+//         customerReason: order.customerReason,
+//         orderRemark: order.orderRemark,
+//         orderDate: order.orderDate,
+//         orderNumber: nextOrderNumber,
+//         CustomerReferance: order.CustomerReferance,
+//         RefrenceDate: order.RefrenceDate,
+//         CustomerName: order.CustomerName,
+//       };
+
+//       console.log(data);
+
+//       let sql = `INSERT INTO orders SET ?`;
+
+//       await new Promise((resolve, reject) => {
+//         mysqlConnection.query(sql, data, (err, result) => {
+//           if (err) {
+//             console.log(err);
+//             return reject(err);
+//           }
+//           resolve();
+//         });
+//       });
+//     }
+
+//     return res.status(201).json({ msg: "Orders added successfully", orders });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
+
+// router.post("/orders", (req, res) => {
+//   const orders = req.body.map((order) => ({
+
+//     CustomeID: req.body.CustomeID,
+//     productName: req.body.productName,
+//     serialNumber: req.body.serialNumber,
+//     HSN: req.body.HSN,
+//     includeHsn: req.body.includeHsn,
+//     rate: req.body.rate,
+//     tax: req.body.tax,
+//     total: req.body.total,
+//     customerReason: req.body.customerReason,
+//     orderRemark: req.body.orderRemark,
+//     orderDate: req.body.orderDate,
+//     orderNumber: req.body.orderNumber,
+//     CustomerReferance: req.body.CustomerReferance,
+//     RefrenceDate: req.body.RefrenceDate,
+//     CustomerName: req.body.CustomerName,
+
+//   }));
+
+//   let sql =
+//     "INSERT INTO orders (CustomeID, productName, serialNumber, HSN, includeHsn, rate, tax, total, customerReason, orderRemark, orderDate, orderNumber, CustomerReferance, RefrenceDate, CustomerName) VALUES ?";
+//   mysqlConnection.query(
+//     sql,
+//     [orders.map((order) => Object.values(order))],
+//     (err, result) => {
+//       if (err) {
+//         console.log(err);
+//         return res.status(500).json({ error: "Internal Server Error" });
+//       }
+//       return res
+//         .status(201)
+//         .json({ msg: "Orders added successfully", message: orders });
+//     }
+//   );
+// });
+
