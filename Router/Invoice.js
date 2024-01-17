@@ -19,24 +19,24 @@ router.post("/invoice", async (req, res) => {
       hsn,
     } = req.body;
 
-    const gstRate = 0.18; 
+    const gstRate = 0.18;
 
     // Calculate GST
     let cgst = 0;
     let sgst = 0;
     let igst = 0;
 
-    if (!isInWarranty) {
-      cgst = (gstRate / 2) * subTotal;
-      sgst = (gstRate / 2) * subTotal;
-      igst = 0; // Assuming 0 IGST for intrastate transactions
+    if (shippingState === "Gujarat") {
+      if (!isInWarranty) {
+        cgst = (gstRate / 2) * subTotal;
+        sgst = (gstRate / 2) * subTotal;
+        igst = 0;
+      }
     } else {
-      cgst = 0;
-      sgst = 0;
-      igst = 0;
+      igst = gstRate * subTotal;
     }
 
-    const totalAmount = isInWarranty ? 0 : subTotal + cgst + sgst + ff;
+    const totalAmount = isInWarranty ? 0 : subTotal + cgst + sgst + igst + ff;
 
     const lastInvoiceNumber = await getLastInvoiceNumber();
     const nextInvoiceNumber = generateNextInvoiceNumber(lastInvoiceNumber);
@@ -79,7 +79,6 @@ router.post("/invoice", async (req, res) => {
   }
 });
 
-
 // function getLastInvoiceNumber() {
 //   return new Promise((resolve, reject) => {
 //     let sql =
@@ -106,13 +105,14 @@ router.post("/invoice", async (req, res) => {
 // console.log(generateNextInvoiceNumber(10));
 function getLastInvoiceNumber() {
   return new Promise((resolve, reject) => {
-    let sql =
-      "SELECT MAX(CAST(SUBSTRING(invoice_number, LOCATE('/', invoice_number) + 1) AS UNSIGNED)) AS maxNumber FROM invoices";
+    let sql =`SELECT MAX(CAST(RIGHT(invoice_number, LENGTH(invoice_number) - LOCATE('/', REVERSE(invoice_number))) AS UNSIGNED)) AS maxNumber FROM invoices`
+    // let sql = `SELECT MAX(CAST(SUBSTRING(invoice_number, LOCATE('/', invoice_number) + 1) AS UNSIGNED)) AS maxNumber FROM invoices`;
     mysqlConnection.query(sql, (err, result) => {
       if (err) {
         reject(err);
       } else {
-        const maxNumber = result[0].maxNumber;
+        const maxNumber = result.maxNumber;
+        console.log(`maxNumber : ${maxNumber}`);
         resolve(maxNumber === null ? 0 : maxNumber);
       }
     });
@@ -121,11 +121,12 @@ function getLastInvoiceNumber() {
 
 function generateNextInvoiceNumber(lastInvoiceNumber) {
   const currentYear = new Date().getFullYear();
+  console.log(`currentYear : ${currentYear}`);
   const nextNumber = lastInvoiceNumber + 1;
+  console.log(`nextNumber : ${nextNumber}`);
   const formattedNumber = nextNumber.toString().padStart(5, "0");
-  return `MCIPL/RPR/${currentYear.toString().substring(2)}${(currentYear + 1)
-    .toString()
-    .substring(2)}/${formattedNumber}`;
+  console.log(`formattedNumber : ${formattedNumber}`);
+  return `MCIPL/RPR/${currentYear.toString().substring(2)}${(currentYear + 1).toString().substring(2)}/${formattedNumber}`;
 }
 
 router.get("/invoice", (req, res) => {

@@ -2,62 +2,62 @@ const express = require("express");
 const router = express.Router();
 const mysqlConnection = require("../Connection");
 
-
-// Add one Order 
-router.post("/orders", async(req, res) => {
+// Add one Order
+router.post("/orders", async (req, res) => {
   const {
-      orderID,
-      CustomeID,
-      productName,
-      serialNumber,
-      HSN,
-      includeHsn,
-      // rate,
-      // tax,
-      // total,
-      customerReason,
-      orderRemark,
-      orderDate,
-      orderNumber,
-      CustomerReferance,
-      RefrenceDate,
-      CustomeName
-    } = req.body
-    const lastOrderNumber = await getLastOrderNumber();
-    const nextOrderNumber = generateNextOrderNumber(lastOrderNumber);
-    console.log(lastOrderNumber);
-    console.log(nextOrderNumber);
-    const data=
-    {
-      orderID:req.body.orderID ,
-      CustomeID:req.body.CustomeID,
-      productName:req.body.productName,
-      serialNumber:req.body.serialNumber,
-      HSN:req.body.HSN,
-      includeHsn:req.body.includeHsn,
-      // rate:req.body.rate,
-      // tax:req.body.tax,
-      // total:req.body.total,
-      customerReason:req.body.customerReason,
-      orderRemark:req.body.orderRemark,
-      orderDate:req.body.orderDate,
-      orderNumber:nextOrderNumber,
-      CustomerReferance:req.body.CustomerReferance,
-      RefrenceDate:req.body.RefrenceDate,
-      CustomeName:req.body.CustomeName
-      // isInProcess: req.body.isInProcess,
-      // isReady: req.body.isReady,
-      // isBilled: req.body.isBilled,
-      // isScraped: req.body.isScraped,
-    } 
-    console.log(data)
+    orderID,
+    CustomeID,
+    productName,
+    serialNumber,
+    HSN,
+    includeHsn,
+    // rate,
+    // tax,
+    // total,
+    customerReason,
+    orderRemark,
+    orderDate,
+    orderNumber,
+    CustomerReferance,
+    RefrenceDate,
+    CustomeName,
+  } = req.body;
+  const lastOrderNumber = await getLastOrderNumber();
+  const nextOrderNumber = generateNextOrderNumber(lastOrderNumber);
+  console.log(`lastOrderNumber : ${lastOrderNumber}`);
+  console.log(`nextOrderNumber : ${nextOrderNumber}`);
+  const data = {
+    orderID: req.body.orderID,
+    CustomeID: req.body.CustomeID,
+    productName: req.body.productName,
+    serialNumber: req.body.serialNumber,
+    HSN: req.body.HSN,
+    includeHsn: req.body.includeHsn,
+    // rate:req.body.rate,
+    // tax:req.body.tax,
+    // total:req.body.total,
+    customerReason: req.body.customerReason,
+    orderRemark: req.body.orderRemark,
+    orderDate: req.body.orderDate,
+    orderNumber: nextOrderNumber,
+    CustomerReferance: req.body.CustomerReferance,
+    RefrenceDate: req.body.RefrenceDate,
+    CustomeName: req.body.CustomeName,
+    // isInProcess: req.body.isInProcess,
+    // isReady: req.body.isReady,
+    // isBilled: req.body.isBilled,
+    // isScraped: req.body.isScraped,
+  };
+  console.log(data);
   let sql = `INSERT INTO orders SET ?`;
   mysqlConnection.query(sql, data, (err, result) => {
     if (err) {
       console.log(err);
       return res.status(500).json({ error: "Internal Server Error" });
     }
-    return res.status(201).json({ msg: "Order added successfully" ,massage:data});
+    return res
+      .status(201)
+      .json({ msg: "Order added successfully", massage: data });
   });
 });
 
@@ -120,33 +120,35 @@ router.get("/orders/:orderID/details", (req, res) => {
   });
 });
 
-//------------------- state change and get data 
+//------------------- state change and get data
 
-router.put('/orders/:orderId/:orderState', (req, res) => {
+router.put("/orders/:orderId/:orderState", (req, res) => {
   const { orderId, orderState } = req.params;
 
   // Validate the status to prevent SQL injection
-  const validStatus = ['isinprocess', 'isready', 'isbilled', 'isscraped'];
+  const validStatus = ["isinprocess", "isready", "isbilled", "isscraped"];
   if (!validStatus.includes(orderState)) {
-    res.status(400).json({ error: 'Invalid status' });
+    res.status(400).json({ error: "Invalid status" });
     return;
   }
 
   const updateQuery = `
     UPDATE orders
-    SET ${validStatus.map(status => `${status} = ${status === orderState ? true : false}`).join(', ')}, orderState = ?
+    SET ${validStatus
+      .map((status) => `${status} = ${status === orderState ? true : false}`)
+      .join(", ")}, orderState = ?
     WHERE orderID = ?;
   `;
 
   mysqlConnection.query(updateQuery, [orderState, orderId], (err, results) => {
     if (err) {
-      console.error('Error executing MySQL query:', err);
-      res.status(500).json({ error: 'Internal Server Error' });
+      console.error("Error executing MySQL query:", err);
+      res.status(500).json({ error: "Internal Server Error" });
       return;
     }
 
     if (results.affectedRows === 0) {
-      res.status(404).json({ error: 'Order not found' });
+      res.status(404).json({ error: "Order not found" });
       return;
     }
 
@@ -154,62 +156,77 @@ router.put('/orders/:orderId/:orderState', (req, res) => {
   });
 });
 
-router.get('/isinprocess-orders', (req, res) => {
-  mysqlConnection.query('SELECT * FROM orders WHERE orderState = "isinprocess"', (err, results) => {
-    if (err) {
-      console.error('Error executing MySQL query:', err);
-      res.status(500).json({ error: 'Internal Server Error' });
-      return;
+router.get("/isinprocess-orders", (req, res) => {
+  mysqlConnection.query(
+    'SELECT * FROM orders WHERE orderState = "isinprocess"',
+    (err, results) => {
+      if (err) {
+        console.error("Error executing MySQL query:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+        return;
+      }
+      res.json(results);
     }
-    res.json(results);
-  });
+  );
 });
 
 // API endpoint to get ready orders
-router.get('/isready-orders', (req, res) => {
-  mysqlConnection.query('SELECT * FROM orders WHERE orderState = "isready"', (err, results) => {
-    if (err) {
-      console.error('Error executing MySQL query:', err);
-      res.status(500).json({ error: 'Internal Server Error' });
-      return;
+router.get("/isready-orders", (req, res) => {
+  mysqlConnection.query(
+    'SELECT * FROM orders WHERE orderState = "isready"',
+    (err, results) => {
+      if (err) {
+        console.error("Error executing MySQL query:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+        return;
+      }
+      res.json(results);
     }
-    res.json(results);
-  });
+  );
 });
 
 // API endpoint to get billed orders
-router.get('/isbilled-orders', (req, res) => {
-  mysqlConnection.query('SELECT * FROM orders WHERE orderState = "isbilled"', (err, results) => {
-    if (err) {
-      console.error('Error executing MySQL query:', err);
-      res.status(500).json({ error: 'Internal Server Error' });
-      return;
+router.get("/isbilled-orders", (req, res) => {
+  mysqlConnection.query(
+    'SELECT * FROM orders WHERE orderState = "isbilled"',
+    (err, results) => {
+      if (err) {
+        console.error("Error executing MySQL query:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+        return;
+      }
+      res.json(results);
     }
-    res.json(results);
-  });
+  );
 });
 
 // API endpoint to get billed orders
-router.get('/isscraped-orders', (req, res) => {
-  mysqlConnection.query('SELECT * FROM orders WHERE orderState = "isscraped"', (err, results) => {
-    if (err) {
-      console.error('Error executing MySQL query:', err);
-      res.status(500).json({ error: 'Internal Server Error' });
-      return;
+router.get("/isscraped-orders", (req, res) => {
+  mysqlConnection.query(
+    'SELECT * FROM orders WHERE orderState = "isscraped"',
+    (err, results) => {
+      if (err) {
+        console.error("Error executing MySQL query:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+        return;
+      }
+      res.json(results);
     }
-    res.json(results);
-  });
+  );
 });
 
 function getLastOrderNumber() {
   return new Promise((resolve, reject) => {
     let sql =
-      "SELECT MAX(CAST(SUBSTRING(orderNumber, LOCATE('/', orderNumber) + 1) AS UNSIGNED)) AS maxNumber FROM orders";
+      `SELECT MAX(CAST(SUBSTRING(orderNumber, LOCATE('/', orderNumber) + 1) AS UNSIGNED)) AS maxNumber FROM orders`;
+      // `SELECT MAX(CAST(RIGHT(orderNumber, LENGTH(orderNumber) - LOCATE('/', REVERSE(orderNumber))) AS UNSIGNED)) AS maxNumber FROM orders`
     mysqlConnection.query(sql, (err, result) => {
+      console.log(`result : ${result}`);
       if (err) {
         reject(err);
       } else {
         const maxNumber = result[0].maxNumber;
+        console.log(`maxnumber getLastOrderNumber : ${maxNumber}`);
         resolve(maxNumber === null ? 0 : maxNumber);
       }
     });
@@ -218,10 +235,15 @@ function getLastOrderNumber() {
 
 function generateNextOrderNumber(lastInvoiceNumber) {
   const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().toLocaleString('en-US', { month: 'short' }); //.toUpperCase() -- Jan
+  console.log(`currentYear : ${currentYear}`);
+  const currentMonth = new Date().toLocaleString("en-US", { month: "short" }); //.toUpperCase() -- Jan
   const nextNumber = lastInvoiceNumber + 1;
+  console.log(`nextNumber : ${nextNumber}`);
   const formattedNumber = nextNumber.toString().padStart(5, "0");
-  return `RPR/${(currentYear).toString().substring(2)}/${currentMonth}/${formattedNumber}`;
+  console.log(`formattedNumber : ${formattedNumber}`);
+  return `RPR/${currentYear
+    .toString()
+    .substring(2)}/${currentMonth}/${formattedNumber}`;
 }
 
 router.delete("/orders/:id", (req, res) => {
@@ -242,7 +264,7 @@ router.delete("/orders/:id", (req, res) => {
   });
 });
 // console.log(generateNextOrderNumber(10));
-//----------------------  
+//----------------------
 
 module.exports = router;
 
@@ -252,10 +274,10 @@ module.exports = router;
 //     SELECT orders.*, customers.*
 //     FROM orders
 //     LEFT JOIN customers ON orders.CustomeID = customers.CustomeID
-//     WHERE orders.orderState = 'order_item_list' AND 
-//           orders.isInProcess = true AND 
-//           orders.isReady = false AND 
-//           orders.isBilled = false AND 
+//     WHERE orders.orderState = 'order_item_list' AND
+//           orders.isInProcess = true AND
+//           orders.isReady = false AND
+//           orders.isBilled = false AND
 //           orders.isScraped = false
 //   `;
 
@@ -268,8 +290,6 @@ module.exports = router;
 //     return res.status(200).json(result);
 //   });
 // });
-
-
 
 // Update a Order
 // router.put("/orders/:id", (req, res) => {
@@ -296,8 +316,7 @@ module.exports = router;
 //   });
 // });
 
-
-// Add one Order 
+// Add one Order
 // router.post("/orders", async(req, res) => {
 //   const {
 //       orderID,
@@ -341,7 +360,7 @@ module.exports = router;
 //       // isReady: req.body.isReady,
 //       // isBilled: req.body.isBilled,
 //       // isScraped: req.body.isScraped,
-//     } 
+//     }
 //     console.log(data)
 //   let sql = `INSERT INTO orders SET ?`;
 //   mysqlConnection.query(sql, data, (err, result) => {
@@ -352,8 +371,6 @@ module.exports = router;
 //     return res.status(201).json({ msg: "Order added successfully" ,massage:data});
 //   });
 // });
-
-
 
 // Add one or more order
 // router.post("/orders", async (req, res) => {
@@ -442,4 +459,3 @@ module.exports = router;
 //     }
 //   );
 // });
-
