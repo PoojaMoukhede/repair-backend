@@ -15,8 +15,9 @@ router.post("/invoice", async (req, res) => {
       transportationMode,
       subTotal,
       isInWarranty,
+      invoice_number,
       ff,
-      hsn,
+      // hsn,
     } = req.body;
 
     const gstRate = 0.18;
@@ -38,14 +39,9 @@ router.post("/invoice", async (req, res) => {
 
     const totalAmount = isInWarranty ? 0 : subTotal + cgst + sgst + igst + ff;
 
-    const lastInvoiceNumber = await getLastInvoiceNumber();
-    const nextInvoiceNumber = generateNextInvoiceNumber(lastInvoiceNumber);
-    console.log(lastInvoiceNumber);
-    console.log(nextInvoiceNumber);
-
     const data = {
       orderID,
-      invoice_number: nextInvoiceNumber,
+      invoice_number,
       shippingAddress,
       shippingPerson,
       shippingCity,
@@ -54,12 +50,10 @@ router.post("/invoice", async (req, res) => {
       invoiceDate,
       transportationMode,
       subTotal,
-      isInWarranty,
       cgst,
       sgst,
       igst,
       ff,
-      hsn,
       totalAmount: totalAmount,
     };
 
@@ -78,56 +72,6 @@ router.post("/invoice", async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-// function getLastInvoiceNumber() {
-//   return new Promise((resolve, reject) => {
-//     let sql =
-//       "SELECT MAX(CAST(SUBSTRING(invoice_number, LOCATE('/', invoice_number) + 1) AS UNSIGNED)) AS maxNumber FROM invoices";
-//     mysqlConnection.query(sql, (err, result) => {
-//       if (err) {
-//         reject(err);
-//       } else {
-//         resolve(result[0].maxNumber || 0);
-//       }
-//     });
-//   });
-// }
-
-// function generateNextInvoiceNumber(lastInvoiceNumber) {
-//   const currentYear = new Date().getFullYear();
-//   const nextNumber = lastInvoiceNumber + 1;
-//   const formattedNumber = nextNumber.toString().padStart(5, "0");
-//   return `MCIPL/RPR/${currentYear.toString().substring(2)}${(currentYear + 1)
-//     .toString()
-//     .substring(2)}/${formattedNumber}`;
-// }
-
-// console.log(generateNextInvoiceNumber(10));
-function getLastInvoiceNumber() {
-  return new Promise((resolve, reject) => {
-    let sql =`SELECT MAX(CAST(RIGHT(invoice_number, LENGTH(invoice_number) - LOCATE('/', REVERSE(invoice_number))) AS UNSIGNED)) AS maxNumber FROM invoices`
-    // let sql = `SELECT MAX(CAST(SUBSTRING(invoice_number, LOCATE('/', invoice_number) + 1) AS UNSIGNED)) AS maxNumber FROM invoices`;
-    mysqlConnection.query(sql, (err, result) => {
-      if (err) {
-        reject(err);
-      } else {
-        const maxNumber = result.maxNumber;
-        console.log(`maxNumber : ${maxNumber}`);
-        resolve(maxNumber === null ? 0 : maxNumber);
-      }
-    });
-  });
-}
-
-function generateNextInvoiceNumber(lastInvoiceNumber) {
-  const currentYear = new Date().getFullYear();
-  console.log(`currentYear : ${currentYear}`);
-  const nextNumber = lastInvoiceNumber + 1;
-  console.log(`nextNumber : ${nextNumber}`);
-  const formattedNumber = nextNumber.toString().padStart(5, "0");
-  console.log(`formattedNumber : ${formattedNumber}`);
-  return `MCIPL/RPR/${currentYear.toString().substring(2)}${(currentYear + 1).toString().substring(2)}/${formattedNumber}`;
-}
 
 router.get("/invoice", (req, res) => {
   let sql = "SELECT * FROM invoices";

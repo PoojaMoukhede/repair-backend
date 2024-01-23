@@ -10,10 +10,8 @@ router.post("/orders", async (req, res) => {
     productName,
     serialNumber,
     HSN,
-    includeHsn,
-    // rate,
-    // tax,
-    // total,
+    isInWarranty,
+    // includeHsn,
     customerReason,
     orderRemark,
     orderDate,
@@ -22,31 +20,21 @@ router.post("/orders", async (req, res) => {
     RefrenceDate,
     CustomeName,
   } = req.body;
-  const lastOrderNumber = await getLastOrderNumber();
-  const nextOrderNumber = generateNextOrderNumber(lastOrderNumber);
-  console.log(`lastOrderNumber : ${lastOrderNumber}`);
-  console.log(`nextOrderNumber : ${nextOrderNumber}`);
+
   const data = {
     orderID: req.body.orderID,
     CustomeID: req.body.CustomeID,
     productName: req.body.productName,
     serialNumber: req.body.serialNumber,
     HSN: req.body.HSN,
-    includeHsn: req.body.includeHsn,
-    // rate:req.body.rate,
-    // tax:req.body.tax,
-    // total:req.body.total,
+    isInWarranty: req.body.isInWarranty,
     customerReason: req.body.customerReason,
     orderRemark: req.body.orderRemark,
     orderDate: req.body.orderDate,
-    orderNumber: nextOrderNumber,
+    orderNumber:req.body.orderNumber,
     CustomerReferance: req.body.CustomerReferance,
     RefrenceDate: req.body.RefrenceDate,
     CustomeName: req.body.CustomeName,
-    // isInProcess: req.body.isInProcess,
-    // isReady: req.body.isReady,
-    // isBilled: req.body.isBilled,
-    // isScraped: req.body.isScraped,
   };
   console.log(data);
   let sql = `INSERT INTO orders SET ?`;
@@ -59,6 +47,53 @@ router.post("/orders", async (req, res) => {
       .status(201)
       .json({ msg: "Order added successfully", massage: data });
   });
+});
+
+// Add one or more order
+router.post("/ordersmultiple", async (req, res) => {
+  try {
+    const orders = Array.isArray(req.body) ? req.body : [req.body];
+
+    const lastOrderNumber = await getLastOrderNumber();
+
+    for (const order of orders) {
+      const nextOrderNumber = generateNextOrderNumber(lastOrderNumber);
+      const data = {
+        orderID: order.orderID,
+        CustomeID: order.CustomeID,
+        productName: order.productName,
+        serialNumber: order.serialNumber,
+        HSN: order.HSN,
+        isInWarranty: order.isInWarranty,
+        customerReason: order.customerReason,
+        orderRemark: order.orderRemark,
+        orderDate: order.orderDate,
+        orderNumber: nextOrderNumber,
+        CustomerReferance: order.CustomerReferance,
+        RefrenceDate: order.RefrenceDate,
+        CustomeName: order.CustomeName,
+      };
+
+      console.log(data);
+
+      let sql = `INSERT INTO orders SET ?`;
+
+      await new Promise((resolve, reject) => {
+        mysqlConnection.query(sql, data, (err, result) => {
+          if (err) {
+            console.log(err);
+            return reject(err);
+          }
+          resolve();
+        });
+      });
+    }
+
+    return res.status(201).json({ msg: "Orders added successfully", orders });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 // Delete a Order
@@ -93,6 +128,19 @@ router.get("/orders/:id", (req, res) => {
 
   let sql = "SELECT * FROM orders WHERE CustomeID = ?";
   mysqlConnection.query(sql, CustomeID, (err, results) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    return res.status(200).json(results[0]);
+  });
+});
+// get last  order detail
+router.get("/orderslast/:orderID", (req, res) => {
+  const orderID = req.params.orderID;
+
+  let sql = "SELECT * FROM orders WHERE orderID = ?";
+  mysqlConnection.query(sql, orderID, (err, results) => {
     if (err) {
       console.log(err);
       return res.status(500).json({ error: "Internal Server Error" });
@@ -219,7 +267,7 @@ function getLastOrderNumber() {
   return new Promise((resolve, reject) => {
     let sql =
       `SELECT MAX(CAST(SUBSTRING(orderNumber, LOCATE('/', orderNumber) + 1) AS UNSIGNED)) AS maxNumber FROM orders`;
-      // `SELECT MAX(CAST(RIGHT(orderNumber, LENGTH(orderNumber) - LOCATE('/', REVERSE(orderNumber))) AS UNSIGNED)) AS maxNumber FROM orders`
+      // `SELECT MAX(CAST(RIGHT(orderNumber, LENGTH(orderNumber) - LOCATE('/', REVERSE(orderNumber))) AS UNSIGNED)) AS maxNumber FROM orders`  //with this getting NaN as 000NaN
     mysqlConnection.query(sql, (err, result) => {
       console.log(`result : ${result}`);
       if (err) {
@@ -244,7 +292,7 @@ function generateNextOrderNumber(lastInvoiceNumber) {
   return `RPR/${currentYear
     .toString()
     .substring(2)}/${currentMonth}/${formattedNumber}`;
-}
+} //'RPR/24/Jan/00025'
 
 router.delete("/orders/:id", (req, res) => {
   const orderID = req.params.id;
