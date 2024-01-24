@@ -11,7 +11,6 @@ router.post("/orders", async (req, res) => {
     serialNumber,
     HSN,
     isInWarranty,
-    // includeHsn,
     customerReason,
     orderRemark,
     orderDate,

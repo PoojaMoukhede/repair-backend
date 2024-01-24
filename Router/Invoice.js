@@ -6,6 +6,7 @@ router.post("/invoice", async (req, res) => {
   try {
     const {
       orderID,
+      invoice_number,
       shippingAddress,
       shippingPerson,
       shippingCity,
@@ -15,7 +16,6 @@ router.post("/invoice", async (req, res) => {
       transportationMode,
       subTotal,
       isInWarranty,
-      invoice_number,
       ff,
       // hsn,
     } = req.body;

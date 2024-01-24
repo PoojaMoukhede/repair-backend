@@ -18,6 +18,15 @@ router.post("/customer", (req, res) => {
     CustomerPAN: req.body.CustomerPAN,
     CustomerCIN: req.body.CustomerCIN,
     CustomerTAN: req.body.CustomerTAN,
+
+    ShippingPerson:req.body.ShippingPerson,
+    ShippingAddress:req.body.ShippingAddress,
+    ShippingCountry:req.body.ShippingCountry,
+    ShippingState:req.body.ShippingState,
+    ShippingCity:req.body.ShippingCity,
+    TransportationMode:req.body.TransportationMode,
+    // FF:req.body.FF,
+    // Amount:req.body.Amount
   };
 
   let sql = `INSERT INTO customers SET ?`;
@@ -43,6 +52,27 @@ router.put("/customer/:id", (req, res) => {
     CustomerState: req.body.CustomerState,
     CustomerCity: req.body.CustomerCity,
     CustomerGST: req.body.CustomerGST,
+  };
+
+  let sql = `UPDATE customers SET ? WHERE CustomeID = ?`;
+  mysqlConnection.query(sql, [newData, CustomeID], (err, result) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    return res.status(200).json({ msg: "Customer updated successfully" });
+  });
+});
+// Update a customer shipping details
+router.put("/shipping/:id", (req, res) => {
+  const CustomeID = req.params.id;
+  const newData = {
+    ShippingPerson:req.body.ShippingPerson,
+    ShippingAddress:req.body.ShippingAddress,
+    ShippingCountry:req.body.ShippingCountry,
+    ShippingState:req.body.ShippingState,
+    ShippingCity:req.body.ShippingCity,
+    TransportationMode:req.body.TransportationMode,
   };
 
   let sql = `UPDATE customers SET ? WHERE CustomeID = ?`;
