@@ -2,71 +2,161 @@ const express = require("express");
 const router = express.Router();
 const mysqlConnection = require("../Connection");
 
+// router.post("/invoice", async (req, res) => {
+//   try {
+//     const {
+//       orderID,
+//       invoice_number,
+//       shippingAddress,
+//       shippingPerson,
+//       shippingCity,
+//       shippingState,
+//       shippingCountry,
+//       invoiceDate,
+//       transportationMode,
+//       subTotal,
+//       isInWarranty,
+//       ff,
+//       // hsn,
+//     } = req.body;
+
+//     const gstRate = 0.18;
+
+//     // Calculate GST
+//     let cgst = 0;
+//     let sgst = 0;
+//     let igst = 0;
+
+//     if (shippingState === "Gujarat") {
+//       if (!isInWarranty) {
+//         cgst = (gstRate / 2) * subTotal;
+//         sgst = (gstRate / 2) * subTotal;
+//         igst = 0;
+//       }
+//     } else {
+//       igst = gstRate * subTotal;
+//     }
+
+//     const totalAmount = isInWarranty ? 0 : subTotal + cgst + sgst + igst + ff;
+
+//     const data = {
+//       orderID,
+//       invoice_number,
+//       // shippingAddress,
+//       // shippingPerson,
+//       // shippingCity,
+//       // shippingState,
+//       // shippingCountry,
+//       invoiceDate,
+//       // transportationMode,
+//       subTotal,
+//       cgst,
+//       sgst,
+//       igst,
+//       ff,
+//       totalAmount: totalAmount,
+//     };
+
+//     let sql = `INSERT INTO invoices SET ?`;
+//     mysqlConnection.query(sql, data, (err, result) => {
+//       if (err) {
+//         console.log(err);
+//         return res.status(500).json({ error: "Internal Server Error" });
+//       }
+//       return res
+//         .status(201)
+//         .json({ msg: "Invoice Details added successfully", totalAmount });
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
+
 router.post("/invoice", async (req, res) => {
   try {
-    const {
-      orderID,
-      invoice_number,
-      shippingAddress,
-      shippingPerson,
-      shippingCity,
-      shippingState,
-      shippingCountry,
-      invoiceDate,
-      transportationMode,
-      subTotal,
-      isInWarranty,
-      ff,
-      // hsn,
-    } = req.body;
+    const { orderID, invoice_number, subTotal, ff } = req.body;
 
-    const gstRate = 0.18;
+    // Check warranty status in the orders table
+    let sqlCheckWarranty = `SELECT isInWarranty FROM orders WHERE orderID = ?`;
+    mysqlConnection.query(
+      sqlCheckWarranty,
+      [orderID],
+      (warrantyErr, warrantyResult) => {
+        if (warrantyErr) {
+          console.log(warrantyErr);
+          return res.status(500).json({ error: "Internal Server Error" });
+        }
 
-    // Calculate GST
-    let cgst = 0;
-    let sgst = 0;
-    let igst = 0;
+        const isInWarranty = warrantyResult;
+        // console.log(`isInWarranty : ${isInWarranty}`);
 
-    if (shippingState === "Gujarat") {
-      if (!isInWarranty) {
-        cgst = (gstRate / 2) * subTotal;
-        sgst = (gstRate / 2) * subTotal;
-        igst = 0;
+        // Fetch shippingState from the customers table
+        let sqlGetShippingState = `SELECT shippingState FROM customers WHERE CustomeID = ?`;
+        mysqlConnection.query(
+          sqlGetShippingState,
+          [orderID],
+          (shippingStateErr, shippingStateResult) => {
+            if (shippingStateErr) {
+              console.log(shippingStateErr);
+              return res.status(500).json({ error: "Internal Server Error" });
+            }
+
+            const shippingState = shippingStateResult;
+            // console.log(`shippingState : ${shippingState}`);
+            // Calculate GST and other amounts based on warranty status and shippingState
+            let cgst = 0;
+            let sgst = 0;
+            let igst = 0;
+            const gstRate = 0.18;
+            if (shippingState === "Gujarat") {
+              if (!isInWarranty) {
+                cgst = (gstRate / 2) * subTotal;
+                sgst = (gstRate / 2) * subTotal;
+                igst = 0;
+              }
+            } else {
+              igst = gstRate * subTotal;
+            }
+
+            const totalAmount = isInWarranty
+              ? 0
+              : subTotal + cgst + sgst + igst + ff;
+
+            const data = {
+              orderID,
+              invoice_number,
+              subTotal,
+              cgst,
+              sgst,
+              igst,
+              ff,
+              totalAmount,
+            };
+
+            let sqlInsertInvoice = `INSERT INTO invoices SET ?`;
+            mysqlConnection.query(
+              sqlInsertInvoice,
+              data,
+              (insertErr, insertResult) => {
+                if (insertErr) {
+                  console.log(insertErr);
+                  return res
+                    .status(500)
+                    .json({ error: "Internal Server Error" });
+                }
+                return res
+                  .status(201)
+                  .json({
+                    msg: "Invoice Details added successfully",
+                    totalAmount,
+                  });
+              }
+            );
+          }
+        );
       }
-    } else {
-      igst = gstRate * subTotal;
-    }
-
-    const totalAmount = isInWarranty ? 0 : subTotal + cgst + sgst + igst + ff;
-
-    const data = {
-      orderID,
-      invoice_number,
-      shippingAddress,
-      shippingPerson,
-      shippingCity,
-      shippingState,
-      shippingCountry,
-      invoiceDate,
-      transportationMode,
-      subTotal,
-      cgst,
-      sgst,
-      igst,
-      ff,
-      totalAmount: totalAmount,
-    };
-
-    let sql = `INSERT INTO invoices SET ?`;
-    mysqlConnection.query(sql, data, (err, result) => {
-      if (err) {
-        console.log(err);
-        return res.status(500).json({ error: "Internal Server Error" });
-      }
-      return res
-        .status(201)
-        .json({ msg: "Invoice Details added successfully", totalAmount });
-    });
+    );
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Internal Server Error" });
