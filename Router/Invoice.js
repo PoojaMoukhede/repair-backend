@@ -75,86 +75,109 @@ const mysqlConnection = require("../Connection");
 
 router.post("/invoice", async (req, res) => {
   try {
-    const { orderID, invoice_number, subTotal, ff } = req.body;
-
+    const { orderID, invoice_number, subTotal, ff, CustomeID } = req.body;
+    console.log(req.body);
     // Check warranty status in the orders table
     let sqlCheckWarranty = `SELECT isInWarranty FROM orders WHERE orderID = ?`;
     mysqlConnection.query(
       sqlCheckWarranty,
-      [orderID],
+      orderID,
       (warrantyErr, warrantyResult) => {
         if (warrantyErr) {
           console.log(warrantyErr);
           return res.status(500).json({ error: "Internal Server Error" });
         }
 
-        const isInWarranty = warrantyResult;
-        // console.log(`isInWarranty : ${isInWarranty}`);
+        // Check if warrantyResult is not empty and contains at least one element
+        if (warrantyResult && warrantyResult.length > 0) {
+          const isInWarranty = warrantyResult;
 
-        // Fetch shippingState from the customers table
-        let sqlGetShippingState = `SELECT shippingState FROM customers WHERE CustomeID = ?`;
-        mysqlConnection.query(
-          sqlGetShippingState,
-          [orderID],
-          (shippingStateErr, shippingStateResult) => {
-            if (shippingStateErr) {
-              console.log(shippingStateErr);
-              return res.status(500).json({ error: "Internal Server Error" });
-            }
-
-            const shippingState = shippingStateResult;
-            // console.log(`shippingState : ${shippingState}`);
-            // Calculate GST and other amounts based on warranty status and shippingState
-            let cgst = 0;
-            let sgst = 0;
-            let igst = 0;
-            const gstRate = 0.18;
-            if (shippingState === "Gujarat") {
-              if (!isInWarranty) {
-                cgst = (gstRate / 2) * subTotal;
-                sgst = (gstRate / 2) * subTotal;
-                igst = 0;
+          // Fetch ShippingState from the customers table
+          let sqlGetShippingState = `SELECT ShippingState FROM customers WHERE CustomeID = ?`;
+          mysqlConnection.query(
+            sqlGetShippingState,
+            CustomeID,
+            (shippingStateErr, shippingStateResult) => {
+              if (shippingStateErr) {
+                console.log(shippingStateErr);
+                return res.status(500).json({ error: "Internal Server Error" });
               }
-            } else {
-              igst = gstRate * subTotal;
-            }
 
-            const totalAmount = isInWarranty
-              ? 0
-              : subTotal + cgst + sgst + igst + ff;
-
-            const data = {
-              orderID,
-              invoice_number,
-              subTotal,
-              cgst,
-              sgst,
-              igst,
-              ff,
-              totalAmount,
-            };
-
-            let sqlInsertInvoice = `INSERT INTO invoices SET ?`;
-            mysqlConnection.query(
-              sqlInsertInvoice,
-              data,
-              (insertErr, insertResult) => {
-                if (insertErr) {
-                  console.log(insertErr);
-                  return res
-                    .status(500)
-                    .json({ error: "Internal Server Error" });
+              // Check if shippingStateResult is not empty and contains at least one element
+              if (shippingStateResult && shippingStateResult.length > 0) {
+                const ShippingState = shippingStateResult;
+                console.log();
+                // Calculate GST and other amounts based on warranty status and ShippingState
+                let cgst = 0;
+                let sgst = 0;
+                let igst = 0;
+                const gstRate = 0.18;
+                console.log(isInWarranty[0].isInWarranty);
+                if (
+                  ShippingState[0].ShippingState === "Gujarat" ||
+                  ShippingState[0].ShippingState === "gujarat" ||
+                  ShippingState[0].ShippingState === "GUJARAT"
+                ) {
+                  if (isInWarranty[0].isInWarranty === 0) {
+                    cgst = (gstRate / 2) * subTotal;
+                    sgst = (gstRate / 2) * subTotal;
+                    igst = 0;
+                  } else {
+                    igst = gstRate * subTotal;
+                  }
+                } else {
+                  igst = gstRate * subTotal;
                 }
-                return res
-                  .status(201)
-                  .json({
-                    msg: "Invoice Details added successfully",
-                    totalAmount,
-                  });
+
+                const totalAmount = isInWarranty[0].isInWarranty
+                  ? 0
+                  : parseFloat(subTotal) +
+                    parseFloat(cgst) +
+                    parseFloat(sgst) +
+                    parseFloat(igst) +
+                    parseFloat(ff);
+
+                const data = {
+                  orderID,
+                  invoice_number,
+                  subTotal,
+                  cgst,
+                  sgst,
+                  igst,
+                  ff: parseFloat(ff),
+                  totalAmount: parseInt(totalAmount),
+                  CustomeID,
+                };
+
+                let sqlInsertInvoice = `INSERT INTO invoices SET ?`;
+                mysqlConnection.query(
+                  sqlInsertInvoice,
+                  data,
+                  (insertErr, insertResult) => {
+                    if (insertErr) {
+                      console.log(insertErr);
+                      return res
+                        .status(500)
+                        .json({ error: "Internal Server Error" });
+                    }
+                    return res.status(201).json({
+                      msg: "Invoice Details added successfully",
+                      totalAmount,
+                    });
+                  }
+                );
+              } else {
+                return res.status(404).json({
+                  error: "Shipping state not found for the given orderID.",
+                });
               }
-            );
-          }
-        );
+            }
+          );
+        } else {
+          return res
+            .status(404)
+            .json({ error: "Warranty data not found for the given orderID." });
+        }
       }
     );
   } catch (error) {
@@ -162,6 +185,98 @@ router.post("/invoice", async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+// router.post("/invoice", async (req, res) => {
+//   try {
+//     const { orderID, invoice_number, subTotal, ff } = req.body;
+
+//     // Check warranty status in the orders table
+//     let sqlCheckWarranty = `SELECT isInWarranty FROM orders WHERE orderID = ?`;
+//     mysqlConnection.query(
+//       sqlCheckWarranty,
+//       [orderID],
+//       (warrantyErr, warrantyResult) => {
+//         if (warrantyErr) {
+//           console.log(warrantyErr);
+//           return res.status(500).json({ error: "Internal Server Error" });
+//         }
+
+//         // const isInWarranty = warrantyResult;
+//         const isInWarranty = warrantyResult;
+
+//         console.log(`isInWarranty : ${warrantyResult}`);
+
+//         // Fetch shippingState from the customers table
+//         let sqlGetShippingState = `SELECT shippingState FROM customers WHERE CustomeID = ?`;
+//         mysqlConnection.query(
+//           sqlGetShippingState,
+//           [orderID],
+//           (shippingStateErr, shippingStateResult) => {
+//             if (shippingStateErr) {
+//               console.log(shippingStateErr);
+//               return res.status(500).json({ error: "Internal Server Error" });
+//             }
+
+//             const shippingState = shippingStateResult;
+//             console.log(`shippingState : ${shippingState}`);
+//             // Calculate GST and other amounts based on warranty status and shippingState
+//             let cgst = 0;
+//             let sgst = 0;
+//             let igst = 0;
+//             const gstRate = 0.18;
+//             if (
+//               shippingState.toLowerCase() === "gujarat"
+//             ) {
+//               if (!isInWarranty) {
+//                 cgst = (gstRate / 2) * subTotal;
+//                 sgst = (gstRate / 2) * subTotal;
+//                 igst = 0;
+//               }
+//             } else {
+//               igst = gstRate * subTotal;
+//             }
+
+//             const totalAmount = isInWarranty
+//               ? 0
+//               : subTotal + cgst + sgst + igst + ff;
+
+//             const data = {
+//               orderID,
+//               invoice_number,
+//               subTotal,
+//               cgst,
+//               sgst,
+//               igst,
+//               ff,
+//               totalAmount,
+//             };
+
+//             let sqlInsertInvoice = `INSERT INTO invoices SET ?`;
+//             mysqlConnection.query(
+//               sqlInsertInvoice,
+//               data,
+//               (insertErr, insertResult) => {
+//                 if (insertErr) {
+//                   console.log(insertErr);
+//                   return res
+//                     .status(500)
+//                     .json({ error: "Internal Server Error" });
+//                 }
+//                 return res.status(201).json({
+//                   msg: "Invoice Details added successfully",
+//                   totalAmount,
+//                 });
+//               }
+//             );
+//           }
+//         );
+//       }
+//     );
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
 
 router.get("/invoice", (req, res) => {
   let sql = "SELECT * FROM invoices";
@@ -210,6 +325,18 @@ router.get("/invoiceData/:orderID", (req, res) => {
     const mergedInvoiceData = result[0];
     console.log(mergedInvoiceData);
     return res.status(200).json(mergedInvoiceData);
+  });
+});
+router.get("/invoicelast/:invoiceID", (req, res) => {
+  const invoiceID = req.params.invoiceID;
+
+  let sql = "SELECT * FROM invoices WHERE invoiceID = ?";
+  mysqlConnection.query(sql, invoiceID, (err, results) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    return res.status(200).json(results[0]);
   });
 });
 

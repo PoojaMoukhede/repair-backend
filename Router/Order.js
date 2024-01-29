@@ -19,19 +19,19 @@ router.post("/orders", async (req, res) => {
     RefrenceDate,
     CustomeName,
   } = req.body;
-
+  const isInWarrantyValue = req.body.isInWarranty || false;
   const data = {
     orderID: req.body.orderID,
     CustomeID: req.body.CustomeID,
     productName: req.body.productName,
     serialNumber: req.body.serialNumber,
     HSN: req.body.HSN,
-    isInWarranty: req.body.isInWarranty,
-    customerReason: req.body.customerReason,
-    orderRemark: req.body.orderRemark,
+    isInWarranty: isInWarrantyValue,
+    customerReason: req.body.customerReason || 'N/A',
+    orderRemark: req.body.orderRemark || 'N/A',
     orderDate: req.body.orderDate,
     orderNumber:req.body.orderNumber,
-    CustomerReferance: req.body.CustomerReferance,
+    CustomerReferance: req.body.CustomerReferance || 'N/A',
     RefrenceDate: req.body.RefrenceDate,
     CustomeName: req.body.CustomeName,
   };
