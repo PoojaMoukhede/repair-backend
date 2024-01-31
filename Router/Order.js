@@ -27,11 +27,11 @@ router.post("/orders", async (req, res) => {
     serialNumber: req.body.serialNumber,
     HSN: req.body.HSN,
     isInWarranty: isInWarrantyValue,
-    customerReason: req.body.customerReason || 'N/A',
-    orderRemark: req.body.orderRemark || 'N/A',
+    customerReason: req.body.customerReason || "N/A",
+    orderRemark: req.body.orderRemark || "N/A",
     orderDate: req.body.orderDate,
-    orderNumber:req.body.orderNumber,
-    CustomerReferance: req.body.CustomerReferance || 'N/A',
+    orderNumber: req.body.orderNumber,
+    CustomerReferance: req.body.CustomerReferance || "N/A",
     RefrenceDate: req.body.RefrenceDate,
     CustomeName: req.body.CustomeName,
   };
@@ -80,11 +80,11 @@ router.post("/ordersMultiple", async (req, res) => {
         serialNumber,
         HSN,
         isInWarranty: isInWarrantyValue,
-        customerReason: customerReason || 'N/A',
-        orderRemark: orderRemark || 'N/A',
+        customerReason: customerReason || "N/A",
+        orderRemark: orderRemark || "N/A",
         orderDate,
         orderNumber,
-        CustomerReferance: CustomerReferance || 'N/A',
+        CustomerReferance: CustomerReferance || "N/A",
         RefrenceDate,
         CustomeName,
       };
@@ -103,7 +103,9 @@ router.post("/ordersMultiple", async (req, res) => {
       insertedOrders.push(data);
     }
 
-    return res.status(201).json({ msg: "Orders added successfully", orders: insertedOrders });
+    return res
+      .status(201)
+      .json({ msg: "Orders added successfully", orders: insertedOrders });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Internal Server Error" });
@@ -308,7 +310,7 @@ router.get("/isscraped-orders", (req, res) => {
 
 router.get("/isinvoiced-orders", (req, res) => {
   mysqlConnection.query(
-    'SELECT * FROM orders WHERE isinvoiced = true',
+    "SELECT * FROM orders WHERE isinvoiced = true",
     (err, results) => {
       if (err) {
         console.error("Error executing MySQL query:", err);
@@ -321,12 +323,13 @@ router.get("/isinvoiced-orders", (req, res) => {
 });
 router.put("/isinvoiced/:orderID", (req, res) => {
   const isinvoiced = req.body.isinvoiced;
-const orderID = req.params.orderID;
+  const orderID = req.params.orderID;
   mysqlConnection.query(
     `UPDATE orders
     SET isinvoiced = true
     WHERE orderID = ?;
-  `,orderID,
+  `,
+    orderID,
     (err, results) => {
       if (err) {
         console.error("Error executing MySQL query:", err);
