@@ -10,6 +10,7 @@ router.post("/invoice", async (req, res) => {
     const subTotal = req.body.subTotal || 0;
     const ff = req.body.ff || 0;
    const CustomeID = req.body.CustomeID;
+   const orderNumber= req.body.orderNumber
     // console.log(req.body);
     // Check warranty status in the orders table
     let sqlCheckWarranty = `SELECT isInWarranty FROM orders WHERE orderID = ?`;
@@ -81,6 +82,7 @@ router.post("/invoice", async (req, res) => {
                   ff: parseFloat(ff),
                   totalAmount: parseInt(totalAmount),
                   CustomeID,
+                  orderNumber
                 };
 
                 let sqlInsertInvoice = `INSERT INTO invoices SET ?`;

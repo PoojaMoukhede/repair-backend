@@ -2,52 +2,6 @@ const express = require("express");
 const router = express.Router();
 const mysqlConnection = require("../Connection");
 
-// Add one Order
-router.post("/orders", async (req, res) => {
-  const {
-    orderID,
-    CustomeID,
-    productName,
-    serialNumber,
-    HSN,
-    isInWarranty,
-    customerReason,
-    orderRemark,
-    orderDate,
-    orderNumber,
-    CustomerReferance,
-    RefrenceDate,
-    CustomeName,
-  } = req.body;
-  const isInWarrantyValue = req.body.isInWarranty || false;
-  const data = {
-    orderID: req.body.orderID,
-    CustomeID: req.body.CustomeID,
-    productName: req.body.productName,
-    serialNumber: req.body.serialNumber,
-    HSN: req.body.HSN,
-    isInWarranty: isInWarrantyValue,
-    customerReason: req.body.customerReason || "N/A",
-    orderRemark: req.body.orderRemark || "N/A",
-    orderDate: req.body.orderDate,
-    orderNumber: req.body.orderNumber,
-    CustomerReferance: req.body.CustomerReferance || "N/A",
-    RefrenceDate: req.body.RefrenceDate,
-    CustomeName: req.body.CustomeName,
-  };
-  console.log(data);
-  let sql = `INSERT INTO orders SET ?`;
-  mysqlConnection.query(sql, data, (err, result) => {
-    if (err) {
-      console.log(err);
-      return res.status(500).json({ error: "Internal Server Error" });
-    }
-    return res
-      .status(201)
-      .json({ msg: "Order added successfully", massage: data });
-  });
-});
-
 // Add one or more order
 router.post("/ordersMultiple", async (req, res) => {
   try {
@@ -137,16 +91,90 @@ router.delete("/orders/:id", (req, res) => {
     return res.status(200).json({ msg: "Order deleted successfully" });
   });
 });
+
+// same orders with details
 router.get("/ordersWithSame", async (req, res) => {
   try {
-    const { CustomeID, orderDate } = req.query;
-    const sql = "SELECT * FROM orders WHERE CustomeID = ? AND orderDate = ?";
-    mysqlConnection.query(sql, [CustomeID, orderDate], (err, results) => {
+    const { CustomeID, orderNumber } = req.query;
+    const sql = `SELECT i.*, o.*, c.* 
+    FROM invoices i 
+    JOIN orders o ON i.orderID = o.orderID
+    JOIN customers c ON o.CustomeID = c.CustomeID
+    WHERE o.CustomeID = ? AND o.orderNumber = ? AND (o.isInProcess = true OR o.isReady = true OR o.isBilled = true OR o.isScraped = true)`;
+
+    mysqlConnection.query(sql, [CustomeID, orderNumber], (err, results) => {
       if (err) {
-        console.error("Error fetching orders: ", err);
+        console.error("Error fetching invoices: ", err);
         return res.status(500).json({ error: "Internal Server Error" });
       } else {
-        return res.status(200).json({ orders: results });
+        // Calculate subtotal and GST for each invoice
+        let subtotal = 0;
+        let totalAmountWithGST = 0;
+        let hasIGST = false;
+        let ffTotal = 0;
+
+        results.forEach((invoice) => {
+          subtotal += parseFloat(invoice.subTotal || 0);
+          ffTotal += parseFloat(invoice.ff || 0);
+          if (parseFloat(invoice.igst) > 0) {
+            hasIGST = true;
+          }
+        });
+
+        // Calculate GST based on subtotal
+        const gstRate = 0.18;
+        let cgst = 0;
+        let sgst = 0;
+        let igst = 0;
+
+        if (hasIGST) {
+          igst = gstRate * subtotal;
+        } else {
+          cgst = sgst = (gstRate / 2) * subtotal;
+        }
+
+        // Calculate total amount with GST including ff
+        totalAmountWithGST =
+          parseFloat(subtotal) +
+          parseFloat(cgst) +
+          parseFloat(sgst) +
+          parseFloat(igst) +
+          parseFloat(ffTotal);
+
+        const data = {
+          CustomeID,
+          orderNumber,
+          subtotal,
+          cgst,
+          sgst,
+          igst,
+          ffTotal,
+          totalAmountWithGST,
+        };
+
+        // let sqlInsertbillingtable = `INSERT INTO billingtable SET ?`;
+        // mysqlConnection.query(
+        //   sqlInsertbillingtable,
+        //   data,
+        //   (billingErr, billingResult) => {
+        //     if (billingErr) {
+        //       console.log(billingErr);
+        //       return res.status(500).json({ error: "Internal Server Error" });
+        //     }
+        //     return res.status(201).json({
+        //       msg: "Billing Details added successfully",
+        //     });
+        //   }
+        // );
+        return res.status(200).json({
+          invoices: results,
+          subtotal,
+          totalAmountWithGST,
+          ffTotal,
+          igst,
+          cgst,
+          sgst,
+        });
       }
     });
   } catch (error) {
@@ -193,29 +221,9 @@ router.get("/orderslast/:orderID", (req, res) => {
     return res.status(200).json(results[0]);
   });
 });
-
-//  merged order and customer details
-router.get("/orders/:orderID/details", (req, res) => {
-  const orderID = req.params.orderID;
-  const sql = `
-    SELECT o.*, c.*
-    FROM orders o
-    JOIN customers c ON o.CustomeID = c.CustomeID
-    WHERE o.orderID = ?`;
-
-  mysqlConnection.query(sql, [orderID], (err, result) => {
-    if (err) {
-      console.log(err);
-      return res.status(500).json({ error: "Internal Server Error" });
-    }
-    const mergedData = result[0];
-    return res.status(200).json(mergedData);
-  });
-});
-
-//------------------- state change and get data
-
-router.put("/orders/:orderId/:orderState", (req, res) => {
+ 
+//------------------- state change and get data 
+router.put("/orders/:orderId/:orderState", (req, res) => { 
   const { orderId, orderState } = req.params;
 
   // Validate the status to prevent SQL injection
@@ -247,7 +255,7 @@ router.put("/orders/:orderId/:orderState", (req, res) => {
 
     res.json({ success: true });
   });
-});
+}); 
 
 router.get("/isinprocess-orders", (req, res) => {
   mysqlConnection.query(
@@ -261,7 +269,7 @@ router.get("/isinprocess-orders", (req, res) => {
       res.json(results);
     }
   );
-});
+}); 
 
 // API endpoint to get ready orders
 router.get("/isready-orders", (req, res) => {
@@ -306,7 +314,7 @@ router.get("/isscraped-orders", (req, res) => {
       res.json(results);
     }
   );
-});
+}); 
 
 router.get("/isinvoiced-orders", (req, res) => {
   mysqlConnection.query(
@@ -321,6 +329,7 @@ router.get("/isinvoiced-orders", (req, res) => {
     }
   );
 });
+
 router.put("/isinvoiced/:orderID", (req, res) => {
   const isinvoiced = req.body.isinvoiced;
   const orderID = req.params.orderID;
@@ -358,7 +367,73 @@ router.delete("/orders/:id", (req, res) => {
     return res.status(204).send(results);
   });
 });
-// console.log(generateNextOrderNumber(10));
+
 //----------------------
 
 module.exports = router;
+//  merged order and customer details
+// router.get("/orders/:orderID/details", (req, res) => {
+//   const orderID = req.params.orderID;
+//   const sql = `
+//     SELECT o.*, c.*
+//     FROM orders o
+//     JOIN customers c ON o.CustomeID = c.CustomeID
+//     WHERE o.orderID = ?`;
+
+//   mysqlConnection.query(sql, [orderID], (err, result) => {
+//     if (err) {
+//       console.log(err);
+//       return res.status(500).json({ error: "Internal Server Error" });
+//     }
+//     const mergedData = result[0];
+//     return res.status(200).json(mergedData);
+//   });
+// });
+
+
+
+// Add one Order
+// router.post("/orders", async (req, res) => {
+//   const {
+//     orderID,
+//     CustomeID,
+//     productName,
+//     serialNumber,
+//     HSN,
+//     isInWarranty,
+//     customerReason,
+//     orderRemark,
+//     orderDate,
+//     orderNumber,
+//     CustomerReferance,
+//     RefrenceDate,
+//     CustomeName,
+//   } = req.body;
+//   const isInWarrantyValue = req.body.isInWarranty || false;
+//   const data = {
+//     orderID: req.body.orderID,
+//     CustomeID: req.body.CustomeID,
+//     productName: req.body.productName,
+//     serialNumber: req.body.serialNumber,
+//     HSN: req.body.HSN,
+//     isInWarranty: isInWarrantyValue,
+//     customerReason: req.body.customerReason || "N/A",
+//     orderRemark: req.body.orderRemark || "N/A",
+//     orderDate: req.body.orderDate,
+//     orderNumber: req.body.orderNumber,
+//     CustomerReferance: req.body.CustomerReferance || "N/A",
+//     RefrenceDate: req.body.RefrenceDate,
+//     CustomeName: req.body.CustomeName,
+//   };
+//   console.log(data);
+//   let sql = `INSERT INTO orders SET ?`;
+//   mysqlConnection.query(sql, data, (err, result) => {
+//     if (err) {
+//       console.log(err);
+//       return res.status(500).json({ error: "Internal Server Error" });
+//     }
+//     return res
+//       .status(201)
+//       .json({ msg: "Order added successfully", massage: data });
+//   });
+// });
