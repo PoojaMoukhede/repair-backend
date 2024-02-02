@@ -270,6 +270,24 @@ router.get("/isinprocess-orders", (req, res) => {
     }
   );
 }); 
+//  merged order and customer details
+router.get("/orders/:orderID/details", (req, res) => {
+  const orderID = req.params.orderID;
+  const sql = `
+    SELECT o.*, c.*
+    FROM orders o
+    JOIN customers c ON o.CustomeID = c.CustomeID
+    WHERE o.orderID = ?`;
+
+  mysqlConnection.query(sql, [orderID], (err, result) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    const mergedData = result[0];
+    return res.status(200).json(mergedData);
+  });
+});
 
 // API endpoint to get ready orders
 router.get("/isready-orders", (req, res) => {
@@ -368,29 +386,8 @@ router.delete("/orders/:id", (req, res) => {
   });
 });
 
-//----------------------
 
 module.exports = router;
-//  merged order and customer details
-// router.get("/orders/:orderID/details", (req, res) => {
-//   const orderID = req.params.orderID;
-//   const sql = `
-//     SELECT o.*, c.*
-//     FROM orders o
-//     JOIN customers c ON o.CustomeID = c.CustomeID
-//     WHERE o.orderID = ?`;
-
-//   mysqlConnection.query(sql, [orderID], (err, result) => {
-//     if (err) {
-//       console.log(err);
-//       return res.status(500).json({ error: "Internal Server Error" });
-//     }
-//     const mergedData = result[0];
-//     return res.status(200).json(mergedData);
-//   });
-// });
-
-
 
 // Add one Order
 // router.post("/orders", async (req, res) => {
